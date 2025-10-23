@@ -1,3 +1,4 @@
+# InnovateMart EKS Deployment
 terraform {
   required_version = ">= 1.0"
   
