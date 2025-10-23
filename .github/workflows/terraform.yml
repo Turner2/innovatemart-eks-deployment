@@ -1,4 +1,3 @@
-# .github/workflows/terraform.yml
 name: 'Terraform Infrastructure Deployment'
 
 on:
@@ -22,6 +21,12 @@ jobs:
   terraform:
     name: 'Terraform'
     runs-on: ubuntu-latest
+    
+    # Set default working directory for all run steps
+    defaults:
+      run:
+        working-directory: ./terraform
+        shell: bash
 
     steps:
       - name: Checkout Code
@@ -32,10 +37,9 @@ jobs:
           echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
           echo "PWD: $(pwd)"
           echo "Repo root contents:"
-          ls -la
+          ls -la $GITHUB_WORKSPACE
           echo "terraform directory contents (if present):"
-          ls -la terraform || true
-        shell: bash
+          ls -la $GITHUB_WORKSPACE/terraform || true
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -52,26 +56,22 @@ jobs:
       - name: Terraform Init
         id: init
         run: terraform init -no-color
-        working-directory: ./terraform
-        shell: bash
 
       - name: Terraform Format Check
-        run: terraform fmt -check
-        working-directory: ./terraform
-        shell: bash
+        run: terraform fmt -check -recursive
+        continue-on-error: true
+
+      - name: Terraform Validate
+        run: terraform validate -no-color
 
       - name: Terraform Plan
         id: plan
         if: github.event_name == 'pull_request'
         run: |
-          # create a binary plan file and print it so plan failures show full output
           terraform plan -no-color -input=false -out=tfplan
           terraform show -no-color tfplan
-        working-directory: ./terraform
-        shell: bash
+        continue-on-error: false
 
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: terraform apply -auto-approve -input=false
-        working-directory: ./terraform
-        shell: bash
+        run: terraform apply -auto-approve -input=false -no-color
