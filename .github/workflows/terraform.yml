@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - 'terraform/**' # Trigger only on changes to Terraform code
+      - 'terraform/**'
   pull_request:
     branches:
       - main
@@ -14,9 +14,9 @@ on:
       - 'terraform/**'
 
 env:
-  # Reference the GitHub Secret you created
+  # Ensure this matches your GitHub Secret
   AWS_REGION: ${{ secrets.AWS_REGION }} 
-  TF_VERSION: 1.6.0 # Specify a stable version
+  TF_VERSION: 1.6.0 # Specify a stable, supported Terraform version
 
 jobs:
   terraform:
@@ -33,7 +33,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # CRITICAL FIX 2: Replaces Terraform Cloud token step with AWS credentials
+      # CRITICAL FIX 2: Configure AWS Credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -41,12 +41,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # FIX 3: Update to latest stable setup-terraform action (v3)
+      # FIX 3: Setup Terraform using the LATEST action (v3) to resolve set-output deprecation
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v3 
         with:
           terraform_version: ${{ env.TF_VERSION }}
-          # REMOVED: cli_config_credentials_token is no longer needed
+          # NOTE: Removed TF_API_TOKEN as we are using AWS S3/IAM, not Terraform Cloud
 
       - name: Terraform Init
         id: init
@@ -57,12 +57,10 @@ jobs:
 
       - name: Terraform Plan
         id: plan
-        # We run plan on all PRs to main
         if: github.event_name == 'pull_request' 
         run: terraform plan -no-color -input=false
 
-      # CRITICAL FIX 4: Corrected conditional for 'main' branch apply
+      # CRITICAL FIX 4: Run Apply ONLY on push to main
       - name: Terraform Apply
-        # Runs ONLY when the main branch is pushed (e.g., after a PR merge)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: terraform apply -auto-approve -input=false
