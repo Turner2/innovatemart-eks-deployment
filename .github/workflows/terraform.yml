@@ -23,9 +23,11 @@ jobs:
     runs-on: ubuntu-latest
     
     # CRITICAL FIX 1: This block is correctly placed and indented at the JOB level
-    defaults:
+   defaults:
       run:
-        working-directory: ./terraform  # <--- MUST BE PRESENT AND CORRECT!
+        # Change the path from ./terraform to the full path in the workspace
+        # This is often needed when the relative path doesn't resolve correctly.
+        working-directory: ${{ github.workspace }}/terraform 
         shell: bash
 
     steps:
