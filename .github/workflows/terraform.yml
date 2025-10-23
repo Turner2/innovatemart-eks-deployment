@@ -22,18 +22,21 @@ jobs:
   terraform:
     name: 'Terraform'
     runs-on: ubuntu-latest
-    
-    # CRITICAL FIX 1: Set the working directory to find your .tf files
-    defaults:
-      run:
-        working-directory: ./terraform
-        shell: bash
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # CRITICAL FIX 2: Configure AWS Credentials using GitHub Secrets
+      - name: Debug - show workspace and terraform dir
+        run: |
+          echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
+          echo "PWD: $(pwd)"
+          echo "Repo root contents:"
+          ls -la
+          echo "terraform directory contents (if present):"
+          ls -la terraform || true
+        shell: bash
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -41,7 +44,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # FIX 3: Setup Terraform using the latest stable action (v3)
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -49,18 +51,27 @@ jobs:
           
       - name: Terraform Init
         id: init
-        run: terraform init
+        run: terraform init -no-color
+        working-directory: ./terraform
+        shell: bash
 
       - name: Terraform Format Check
         run: terraform fmt -check
+        working-directory: ./terraform
+        shell: bash
 
       - name: Terraform Plan
         id: plan
-        # Run plan on all PRs to main
-        if: github.event_name == 'pull_request' 
-        run: terraform plan -no-color -input=false
+        if: github.event_name == 'pull_request'
+        run: |
+          # create a binary plan file and print it so plan failures show full output
+          terraform plan -no-color -input=false -out=tfplan
+          terraform show -no-color tfplan
+        working-directory: ./terraform
+        shell: bash
 
-      # CRITICAL FIX 4: Run Apply ONLY on push to main (e.g., after a successful PR merge)
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: terraform apply -auto-approve -input=false
+        working-directory: ./terraform
+        shell: bash
