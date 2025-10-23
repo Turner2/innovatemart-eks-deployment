@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout
+  namespace: retail-store
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: checkout
+  template:
+    metadata:
+      labels:
+        app: checkout
+    spec:
+      containers:
+      - name: checkout
+        image: public.ecr.aws/aws-containers/retail-store-sample-checkout:0.7.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        env:
+        - name: ENDPOINTS_ORDERS
+          value: http://orders:8080
+        - name: REDIS_URL
+          value: redis://checkout-redis:6379
+        resources:
+          limits:
+            memory: 512Mi
+          requests:
+            cpu: 128m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkout
+  namespace: retail-store
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+  selector:
+    app: checkout
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout-redis
+  namespace: retail-store
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: checkout-redis
+  template:
+    metadata:
+      labels:
+        app: checkout-redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:6-alpine
+        ports:
+        - containerPort: 6379
+          protocol: TCP
+        resources:
+          limits:
+            memory: 256Mi
+          requests:
+            cpu: 64m
+            memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkout-redis
+  namespace: retail-store
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6379
+    targetPort: 6379
+    protocol: TCP
+  selector:
+    app: checkout-redis

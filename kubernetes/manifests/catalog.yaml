@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog
+  namespace: retail-store
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: catalog
+  template:
+    metadata:
+      labels:
+        app: catalog
+    spec:
+      containers:
+      - name: catalog
+        image: public.ecr.aws/aws-containers/retail-store-sample-catalog:0.7.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        env:
+        - name: DB_ENDPOINT
+          value: catalog-mysql:3306
+        - name: DB_NAME
+          value: catalog
+        - name: DB_USER
+          value: catalog_user
+        - name: DB_PASSWORD
+          value: default_password
+        resources:
+          limits:
+            memory: 512Mi
+          requests:
+            cpu: 128m
+            memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog
+  namespace: retail-store
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+  selector:
+    app: catalog
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: catalog-mysql
+  namespace: retail-store
+spec:
+  serviceName: catalog-mysql
+  replicas: 1
+  selector:
+    matchLabels:
+      app: catalog-mysql
+  template:
+    metadata:
+      labels:
+        app: catalog-mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: my-secret-pw
+        - name: MYSQL_DATABASE
+          value: catalog
+        - name: MYSQL_USER
+          value: catalog_user
+        - name: MYSQL_PASSWORD
+          value: default_password
+        ports:
+        - containerPort: 3306
+          protocol: TCP
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/mysql
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog-mysql
+  namespace: retail-store
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - port: 3306
+    targetPort: 3306
+    protocol: TCP
+  selector:
+    app: catalog-mysql
