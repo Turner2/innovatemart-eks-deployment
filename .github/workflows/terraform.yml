@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'terraform/**' # Trigger only on changes to Terraform code
+      - 'terraform/**'
   pull_request:
     branches:
       - main
@@ -13,33 +13,27 @@ on:
       - 'terraform/**'
 
 env:
-  # Reference the GitHub Secret you created (us-east-1, etc.)
   AWS_REGION: ${{ secrets.AWS_REGION }} 
-  TF_VERSION: 1.6.0 # Specify a stable, supported Terraform version
+  TF_VERSION: 1.6.0
 
 jobs:
   terraform:
     name: 'Terraform'
     runs-on: ubuntu-latest
-    
-    # Set default working directory for all run steps
-    defaults:
-      run:
-        working-directory: ./terraform
-        shell: bash
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Debug - show workspace and terraform dir
+        working-directory: ./terraform
         run: |
           echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
           echo "PWD: $(pwd)"
-          echo "Repo root contents:"
-          ls -la $GITHUB_WORKSPACE
-          echo "terraform directory contents (if present):"
-          ls -la $GITHUB_WORKSPACE/terraform || true
+          echo "Current directory contents:"
+          ls -la
+          echo "Terraform files:"
+          find . -name "*.tf" -type f
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -53,26 +47,28 @@ jobs:
         with:
           terraform_version: ${{ env.TF_VERSION }}
           terraform_wrapper: false
-          
+
       - name: Terraform Init
-        id: init
+        working-directory: ./terraform
         run: terraform init -no-color
 
       - name: Terraform Format Check
+        working-directory: ./terraform
         run: terraform fmt -check -recursive
         continue-on-error: true
 
       - name: Terraform Validate
+        working-directory: ./terraform
         run: terraform validate -no-color
 
       - name: Terraform Plan
-        id: plan
         if: github.event_name == 'pull_request'
+        working-directory: ./terraform
         run: |
           terraform plan -no-color -input=false -out=tfplan
           terraform show -no-color tfplan
-        continue-on-error: false
 
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        working-directory: ./terraform
         run: terraform apply -auto-approve -input=false -no-color
