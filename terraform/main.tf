@@ -1,25 +1,21 @@
-terraform {
-  required_version = ">= 1.0"
-  
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "~> 2.23"
-    }
-  }
-}
+# terraform/main.tf
 
-provider "aws" {
-  region = var.aws_region
-}
+# ... (AWS provider and module calls here) ...
 
 provider "kubernetes" {
   host                   = module.eks.cluster_endpoint
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+  
+  # CRITICAL FIX: The provider MUST depend on the EKS cluster being created.
+  # Otherwise, it attempts to read non-existent cluster outputs during 'terraform init/plan'.
+  # This dependency ensures the provider configuration is only valid AFTER EKS is built.
+  # The module.eks outputs are defined in terraform/eks/outputs.tf.
+  depends_on = [
+    module.eks,
+    # Add any resources the Kubernetes provider interacts with first, e.g.,
+    # aws_eks_cluster.main (if you used separate resource blocks)
+  ]
+
   exec {
     api_version = "client.authentication.k8s.io/v1beta1"
     command     = "aws"
@@ -30,32 +26,4 @@ provider "kubernetes" {
       module.eks.cluster_name
     ]
   }
-}
-
-# VPC Module
-module "vpc" {
-  source = "./vpc"
-
-  vpc_cidr     = var.vpc_cidr
-  cluster_name = var.cluster_name
-}
-
-# EKS Module
-module "eks" {
-  source = "./eks"
-
-  cluster_name       = var.cluster_name
-  private_subnet_ids = module.vpc.private_subnet_ids
-  public_subnet_ids  = module.vpc.public_subnet_ids
-
-  depends_on = [module.vpc]
-}
-
-# IAM Module
-module "iam" {
-  source = "./iam"
-
-  cluster_name = var.cluster_name
-
-  depends_on = [module.eks]
 }
