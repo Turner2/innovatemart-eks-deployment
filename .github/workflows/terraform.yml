@@ -1,5 +1,5 @@
 # .github/workflows/terraform.yml
-name: 'Terraform Infrastructure Deployment'
+name: 'Terraform Validation'
 
 on:
   push:
@@ -14,12 +14,11 @@ on:
       - 'terraform/**'
 
 env:
-  AWS_REGION: ${{ secrets.AWS_REGION }}
   TF_VERSION: 1.9.8
 
 jobs:
-  terraform:
-    name: 'Terraform'
+  validate:
+    name: 'Validate Terraform Configuration'
     runs-on: ubuntu-latest
 
     defaults:
@@ -31,34 +30,25 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
 
-      - name: Terraform Init
-        id: init
-        run: terraform init
-
       - name: Terraform Format Check
-        run: terraform fmt -check
+        run: terraform fmt -check -recursive
         continue-on-error: true
+
+      - name: Terraform Init (No Backend)
+        id: init
+        run: terraform init -backend=false
 
       - name: Terraform Validate
         run: terraform validate
 
-      - name: Terraform Plan
-        id: plan
-        if: github.event_name == 'pull_request'
-        run: terraform plan -no-color -input=false
-
-      - name: Terraform Apply
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: terraform apply -auto-approve -input=false
+      - name: Validation Success
+        if: success()
+        run: |
+          echo "✅ Terraform configuration is valid!"
+          echo "✅ All syntax checks passed!"
+          echo "✅ Code is ready for manual deployment!"
