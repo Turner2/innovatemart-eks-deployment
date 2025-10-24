@@ -15,3 +15,10 @@ variable "vpc_cidr" {
   type        = string
   default     = "10.0.0.0/16"
 }
+
+variable "db_password" {
+  description = "Master password for RDS databases"
+  type        = string
+  sensitive   = true
+  default     = "InnovateMart2024!"
+}

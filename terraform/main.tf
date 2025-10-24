@@ -14,6 +14,14 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.5"
     }
+    cloudinit = {
+      source  = "hashicorp/cloudinit"
+      version = "~> 2.3"
+    }
+    time = {
+      source  = "hashicorp/time"
+      version = "~> 0.9"
+    }
   }
 }
 
@@ -25,12 +33,13 @@ provider "aws" {
       Project     = "InnovateMart"
       ManagedBy   = "Terraform"
       Environment = "Production"
+      Owner       = "Turner2"
+      DeployDate  = "2025-10-24"
     }
   }
 }
 
 # Provider configuration for Kubernetes
-# Note: Uses data sources from iam-alb-controller.tf to avoid duplication
 provider "kubernetes" {
   host                   = module.eks.cluster_endpoint
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
@@ -51,6 +60,13 @@ data "aws_availability_zones" "available" {
 locals {
   cluster_name = "innovatemart-eks-cluster"
   azs          = slice(data.aws_availability_zones.available.names, 0, 2)
+  
+  common_tags = {
+    Project     = "InnovateMart"
+    ManagedBy   = "Terraform"
+    Environment = "Production"
+    Owner       = "Turner2"
+  }
 }
 
 # VPC Module
@@ -71,18 +87,18 @@ module "vpc" {
   enable_dns_support   = true
 
   public_subnet_tags = {
-    "kubernetes.io/role/elb" = "1"
+    "kubernetes.io/role/elb"                      = "1"
     "kubernetes.io/cluster/${local.cluster_name}" = "shared"
   }
 
   private_subnet_tags = {
-    "kubernetes.io/role/internal-elb" = "1"
+    "kubernetes.io/role/internal-elb"             = "1"
     "kubernetes.io/cluster/${local.cluster_name}" = "shared"
   }
 
-  tags = {
+  tags = merge(local.common_tags, {
     Name = "${local.cluster_name}-vpc"
-  }
+  })
 }
 
 # EKS Module
@@ -112,32 +128,32 @@ module "eks" {
       capacity_type  = "ON_DEMAND"
 
       labels = {
-        role = "worker"
+        role        = "worker"
+        environment = "production"
       }
 
-      tags = {
+      tags = merge(local.common_tags, {
         Name = "${local.cluster_name}-node"
-      }
+      })
     }
   }
 
   # Cluster access entry
   enable_cluster_creator_admin_permissions = true
 
-  tags = {
+  tags = merge(local.common_tags, {
     Name = local.cluster_name
-  }
+  })
 }
 
 # RDS and DynamoDB Module
 module "rds" {
   source = "./rds"
 
-  cluster_name            = local.cluster_name
-  vpc_id                  = module.vpc.vpc_id
-  private_subnet_ids      = module.vpc.private_subnets
-  eks_security_group_id   = module.eks.node_security_group_id
-  
-  orders_db_password      = var.orders_db_password
-  catalog_db_password     = var.catalog_db_password
+  cluster_name       = local.cluster_name
+  vpc_id             = module.vpc.vpc_id
+  vpc_cidr           = var.vpc_cidr
+  private_subnet_ids = module.vpc.private_subnets
+  db_password        = var.db_password
 }
+

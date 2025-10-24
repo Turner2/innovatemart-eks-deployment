@@ -1,5 +1,10 @@
+variable "cluster_name" {
+  description = "Name of the EKS cluster"
+  type        = string
+}
+
 variable "vpc_id" {
-  description = "VPC ID where RDS will be deployed"
+  description = "VPC ID where RDS instances will be created"
   type        = string
 }
 
@@ -9,23 +14,12 @@ variable "vpc_cidr" {
 }
 
 variable "private_subnet_ids" {
-  description = "Private subnet IDs for RDS"
+  description = "List of private subnet IDs for RDS subnet group"
   type        = list(string)
 }
 
 variable "db_password" {
-  description = "Master password for databases"
+  description = "Master password for RDS databases"
   type        = string
   sensitive   = true
-}
-
-variable "project_name" {
-  description = "Project name for tagging"
-  type        = string
-  default     = "innovatemart"
-}
-
-variable "cluster_name" {
-  description = "EKS cluster name for tagging"
-  type        = string
 }
