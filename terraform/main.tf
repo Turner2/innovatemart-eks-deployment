@@ -27,7 +27,6 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
-
   default_tags {
     tags = {
       Project     = "InnovateMart"
@@ -146,14 +145,14 @@ module "eks" {
   })
 }
 
-# RDS and DynamoDB Module
-module "rds" {
-  source = "./rds"
-
-  cluster_name       = local.cluster_name
-  vpc_id             = module.vpc.vpc_id
-  vpc_cidr           = var.vpc_cidr
-  private_subnet_ids = module.vpc.private_subnets
-  db_password        = var.db_password
-}
-
+# RDS and DynamoDB Module - COMMENTED OUT FOR CLEAN DESTROY
+# Uncomment after successful apply if needed
+# module "rds" {
+#   source = "./rds"
+#   
+#   cluster_name       = local.cluster_name
+#   vpc_id             = module.vpc.vpc_id
+#   vpc_cidr           = var.vpc_cidr
+#   private_subnet_ids = module.vpc.private_subnets
+#   db_password        = var.db_password
+# }
