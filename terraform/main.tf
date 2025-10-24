@@ -1,29 +1,55 @@
-# terraform/main.tf
-
-# ... (AWS provider and module calls here) ...
-
-provider "kubernetes" {
-  host                   = module.eks.cluster_endpoint
-  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+terraform {
+  required_version = ">= 1.6.0"
   
-  # CRITICAL FIX: The provider MUST depend on the EKS cluster being created.
-  # Otherwise, it attempts to read non-existent cluster outputs during 'terraform init/plan'.
-  # This dependency ensures the provider configuration is only valid AFTER EKS is built.
-  # The module.eks outputs are defined in terraform/eks/outputs.tf.
-  depends_on = [
-    module.eks,
-    # Add any resources the Kubernetes provider interacts with first, e.g.,
-    # aws_eks_cluster.main (if you used separate resource blocks)
-  ]
-
-  exec {
-    api_version = "client.authentication.k8s.io/v1beta1"
-    command     = "aws"
-    args = [
-      "eks",
-      "get-token",
-      "--cluster-name",
-      module.eks.cluster_name
-    ]
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.23"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.5"
+    }
   }
 }
+
+provider "aws" {
+  region = var.aws_region
+
+  default_tags {
+    tags = {
+      Project     = "InnovateMart"
+      ManagedBy   = "Terraform"
+      Environment = "Production"
+    }
+  }
+}
+
+# Data sources for EKS cluster authentication
+data "aws_eks_cluster" "cluster" {
+  name = module.eks.cluster_name
+}
+
+data "aws_eks_cluster_auth" "cluster" {
+  name = module.eks.cluster_name
+}
+
+provider "kubernetes" {
+  host                   = data.aws_eks_cluster.cluster.endpoint
+  cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
+  token                  = data.aws_eks_cluster_auth.cluster.token
+}
+
+# Get availability zones
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
+# Local variables
+locals {
+  cluster_
+
