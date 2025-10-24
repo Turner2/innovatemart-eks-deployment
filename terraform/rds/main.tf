@@ -29,7 +29,10 @@ resource "aws_security_group" "rds" {
   }
 
   tags = {
-    Name = "${var.cluster_name}-rds-sg"
+    Name        = "${var.cluster_name}-rds-sg"
+    Project     = "InnovateMart"
+    ManagedBy   = "Terraform"
+    Environment = "Production"
   }
 
   lifecycle {
@@ -43,7 +46,10 @@ resource "aws_db_subnet_group" "rds" {
   subnet_ids = var.private_subnet_ids
 
   tags = {
-    Name = "${var.cluster_name}-rds-subnet-group"
+    Name        = "${var.cluster_name}-rds-subnet-group"
+    Project     = "InnovateMart"
+    ManagedBy   = "Terraform"
+    Environment = "Production"
   }
 }
 
@@ -51,7 +57,7 @@ resource "aws_db_subnet_group" "rds" {
 resource "aws_db_instance" "orders_pg" {
   identifier     = "${var.cluster_name}-orders-pg"
   engine         = "postgres"
-  engine_version = "15.5"
+  engine_version = "15"
   instance_class = "db.t3.micro"
 
   allocated_storage     = 20
@@ -74,8 +80,11 @@ resource "aws_db_instance" "orders_pg" {
   maintenance_window     = "mon:04:00-mon:05:00"
 
   tags = {
-    Name    = "${var.cluster_name}-orders-pg"
-    Service = "orders"
+    Name        = "${var.cluster_name}-orders-pg"
+    Service     = "orders"
+    Project     = "InnovateMart"
+    ManagedBy   = "Terraform"
+    Environment = "Production"
   }
 }
 
@@ -83,7 +92,7 @@ resource "aws_db_instance" "orders_pg" {
 resource "aws_db_instance" "catalog_mysql" {
   identifier     = "${var.cluster_name}-catalog-mysql"
   engine         = "mysql"
-  engine_version = "8.0.35"
+  engine_version = "8.0"
   instance_class = "db.t3.micro"
 
   allocated_storage     = 20
@@ -106,16 +115,19 @@ resource "aws_db_instance" "catalog_mysql" {
   maintenance_window     = "mon:04:00-mon:05:00"
 
   tags = {
-    Name    = "${var.cluster_name}-catalog-mysql"
-    Service = "catalog"
+    Name        = "${var.cluster_name}-catalog-mysql"
+    Service     = "catalog"
+    Project     = "InnovateMart"
+    ManagedBy   = "Terraform"
+    Environment = "Production"
   }
 }
 
 # DynamoDB Table for Carts Service
 resource "aws_dynamodb_table" "carts" {
-  name           = "${var.cluster_name}-carts"
-  billing_mode   = "PAY_PER_REQUEST"
-  hash_key       = "id"
+  name         = "${var.cluster_name}-carts"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "id"
 
   attribute {
     name = "id"
@@ -134,7 +146,10 @@ resource "aws_dynamodb_table" "carts" {
   }
 
   tags = {
-    Name    = "${var.cluster_name}-carts"
-    Service = "carts"
+    Name        = "${var.cluster_name}-carts"
+    Service     = "carts"
+    Project     = "InnovateMart"
+    ManagedBy   = "Terraform"
+    Environment = "Production"
   }
 }

@@ -5,46 +5,49 @@ data "http" "alb_controller_iam_policy" {
 
 # Create IAM Policy
 resource "aws_iam_policy" "alb_controller" {
-  name        = "${var.cluster_name}-alb-controller-policy"
+  name        = "${local.cluster_name}-alb-controller-policy"
   description = "IAM policy for AWS Load Balancer Controller"
   policy      = data.http.alb_controller_iam_policy.response_body
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  tags = {
+    Name        = "${local.cluster_name}-alb-controller-policy"
+    Project     = "InnovateMart"
+    ManagedBy   = "Terraform"
+    Environment = "Production"
+  }
 }
 
-# Get OIDC provider
-data "aws_eks_cluster" "cluster" {
-  name = module.eks.cluster_name
-}
-
-data "tls_certificate" "cluster" {
-  url = data.aws_eks_cluster.cluster.identity[0].oidc[0].issuer
-}
-
-resource "aws_iam_openid_connect_provider" "cluster" {
-  client_id_list  = ["sts.amazonaws.com"]
-  thumbprint_list = [data.tls_certificate.cluster.certificates[0].sha1_fingerprint]
-  url             = data.aws_eks_cluster.cluster.identity[0].oidc[0].issuer
-}
-
-# IAM Role for ALB Controller
+# IAM Role for ALB Controller (using EKS module's OIDC provider)
 resource "aws_iam_role" "alb_controller" {
-  name = "${var.cluster_name}-alb-controller-role"
+  name = "${local.cluster_name}-alb-controller-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect = "Allow"
       Principal = {
-        Federated = aws_iam_openid_connect_provider.cluster.arn
+        Federated = module.eks.oidc_provider_arn
       }
       Action = "sts:AssumeRoleWithWebIdentity"
       Condition = {
         StringEquals = {
-          "${replace(aws_iam_openid_connect_provider.cluster.url, "https://", "")}:sub" = "system:serviceaccount:kube-system:aws-load-balancer-controller"
-          "${replace(aws_iam_openid_connect_provider.cluster.url, "https://", "")}:aud" = "sts.amazonaws.com"
+          "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub" = "system:serviceaccount:kube-system:aws-load-balancer-controller"
+          "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:aud" = "sts.amazonaws.com"
         }
       }
     }]
   })
+
+  tags = {
+    Name        = "${local.cluster_name}-alb-controller-role"
+    Project     = "InnovateMart"
+    ManagedBy   = "Terraform"
+    Environment = "Production"
+  }
 }
 
 # Attach policy to role
@@ -53,7 +56,8 @@ resource "aws_iam_role_policy_attachment" "alb_controller" {
   role       = aws_iam_role.alb_controller.name
 }
 
-# Output the role ARN
+# Output the role ARN 
 output "alb_controller_role_arn" {
-  value = aws_iam_role.alb_controller.arn
+  description = "ARN of the IAM role for AWS Load Balancer Controller"
+  value       = aws_iam_role.alb_controller.arn
 }
