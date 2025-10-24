@@ -1,0 +1,60 @@
+terraform {
+  required_version = ">= 1.5.0"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+variable "aws_region" {
+  type        = string
+  default     = "us-east-1"
+  description = "AWS region for the EKS cluster"
+}
+
+provider "aws" {
+  region = var.aws_region
+
+  default_tags {
+    tags = {
+      Project     = "InnovateMart"
+      ManagedBy   = "Terraform"
+      Environment = "Production"
+      Owner       = "Turner2"
+      DeployDate  = "2025-10-24"
+    }
+  }
+}
+
+locals {
+  cluster_name = "innovatemart-eks-cluster"
+}
+
+# Existing resources
+data "aws_vpc" "existing" {
+  id = "vpc-06739db3d5c7f9b6f"
+}
+
+data "aws_eks_cluster" "this" {
+  name = local.cluster_name
+}
+
+data "aws_eks_cluster_auth" "this" {
+  name = local.cluster_name
+}
+
+# Outputs
+output "cluster_endpoint" {
+  value = data.aws_eks_cluster.this.endpoint
+}
+
+output "cluster_name" {
+  value = data.aws_eks_cluster.this.name
+}
+
+output "configure_kubectl" {
+  value = "aws eks update-kubeconfig --name ${local.cluster_name} --region ${var.aws_region}"
+}

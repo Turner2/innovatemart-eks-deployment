@@ -1,0 +1,49 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "Default",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::378388077304:root"
+      },
+      "Action": "kms:*",
+      "Resource": "*"
+    },
+    {
+      "Sid": "KeyAdministration",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::378388077304:user/Ayomide-Ojo"
+      },
+      "Action": [
+        "kms:Update*",
+        "kms:UntagResource",
+        "kms:TagResource",
+        "kms:ScheduleKeyDeletion",
+        "kms:Revoke*",
+        "kms:ReplicateKey",
+        "kms:Put*",
+        "kms:List*",
+        "kms:ImportKeyMaterial"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "Allow EKS control plane to use the key",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::378388077304:role/innovatemart-eks-cluster-cluster-20251024080152839100000001"
+      },
+      "Action": [
+        "kms:Encrypt",
+        "kms:Decrypt",
+        "kms:DescribeKey",
+        "kms:CreateGrant",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

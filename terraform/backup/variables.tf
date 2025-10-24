@@ -20,3 +20,9 @@ variable "vpc_cidr" {
   description = "CIDR block for the VPC"
   default     = "10.0.0.0/16"
 }
+
+variable "db_password" {
+  description = "Password for managed databases, sourced from terraform.tfvars"
+  type        = string
+  sensitive   = true
+}
