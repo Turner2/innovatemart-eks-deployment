@@ -1,0 +1,46 @@
+name: deploy-retail-store
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "kubernetes/**"
+      - ".github/workflows/deploy-app.yml"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: us-east-1
+      CLUSTER_NAME: innovatemart-eks-cluster
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS creds from OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::<YOUR_AWS_ACCOUNT_ID>:role/github-oidc-terraform
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install kubectl
+        run: |
+          curl -L -o kubectl https://s3.us-west-2.amazonaws.com/amazon-eks/1.28.15/2024-11-19/bin/linux/amd64/kubectl
+          chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+
+      - name: Generate kubeconfig
+        run: aws eks update-kubeconfig --name "$CLUSTER_NAME" --region "$AWS_REGION"
+
+      - name: Apply manifests
+        run: |
+          kubectl apply -f kubernetes/manifests/
+          kubectl -n default rollout status deploy/ui --timeout=10m
+
+      - name: Show UI ELB
+        run: |
+          HOST=$(kubectl get svc ui -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          echo "UI URL: http://$HOST"
+          echo "UI URL: http://$HOST" >> $GITHUB_STEP_SUMMARY

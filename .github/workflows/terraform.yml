@@ -1,54 +1,42 @@
-# .github/workflows/terraform.yml
-name: 'Terraform Validation'
-
+name: terraform
 on:
   push:
-    branches:
-      - main
-    paths:
-      - 'terraform/**'
+    branches: ["**"]
   pull_request:
-    branches:
-      - main
-    paths:
-      - 'terraform/**'
 
-env:
-  TF_VERSION: 1.9.8
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
-  validate:
-    name: 'Validate Terraform Configuration'
+  tf:
     runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: ./terraform
-        shell: bash
-
+    env:
+      AWS_REGION: us-east-1
+      TF_IN_AUTOMATION: true
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: ${{ env.TF_VERSION }}
+          terraform_version: 1.9.8
 
-      - name: Terraform Format Check
-        run: terraform fmt -check -recursive
-        continue-on-error: true
+      - name: Configure AWS credentials from OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::<YOUR_AWS_ACCOUNT_ID>:role/github-oidc-terraform
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Terraform Init (No Backend)
-        id: init
-        run: terraform init -backend=false
+      - name: Terraform Init
+        run: terraform init -input=false
 
-      - name: Terraform Validate
-        run: terraform validate
+      - name: Terraform Format
+        run: terraform fmt -check
 
-      - name: Validation Success
-        if: success()
-        run: |
-          echo "✅ Terraform configuration is valid!"
-          echo "✅ All syntax checks passed!"
-          echo "✅ Code is ready for manual deployment!"
+      - name: Terraform Plan
+        if: github.ref != 'refs/heads/main'
+        run: terraform plan -input=false
+
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve -input=false
