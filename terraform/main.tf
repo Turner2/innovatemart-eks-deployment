@@ -114,10 +114,5 @@ EOT
     }
   }
 
-  # Cluster access entry
-  enable_cluster_creator_admin_permissions = true
-
-  tags = merge(local.common_tags, {
-    Name = local.cluster_name
-  })
+  tags = merge(local.common_tags, { Name = local.cluster_name })
 }
