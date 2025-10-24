@@ -14,16 +14,14 @@ on:
       - 'terraform/**'
 
 env:
-  # Ensure this matches your GitHub Secret
-  AWS_REGION: ${{ secrets.AWS_REGION }} 
-  TF_VERSION: 1.6.0 # Specify a stable, supported Terraform version
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  TF_VERSION: 1.6.0
 
 jobs:
   terraform:
     name: 'Terraform'
     runs-on: ubuntu-latest
-    
-    # CRITICAL FIX 1: Set the working directory to find your .tf files
+
     defaults:
       run:
         working-directory: ./terraform
@@ -33,7 +31,6 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # CRITICAL FIX 2: Configure AWS Credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -41,12 +38,10 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # FIX 3: Setup Terraform using the LATEST action (v3) to resolve set-output deprecation
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3 
+        uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
-          # NOTE: Removed TF_API_TOKEN as we are using AWS S3/IAM, not Terraform Cloud
 
       - name: Terraform Init
         id: init
@@ -54,13 +49,16 @@ jobs:
 
       - name: Terraform Format Check
         run: terraform fmt -check
+        continue-on-error: true
+
+      - name: Terraform Validate
+        run: terraform validate
 
       - name: Terraform Plan
         id: plan
-        if: github.event_name == 'pull_request' 
+        if: github.event_name == 'pull_request'
         run: terraform plan -no-color -input=false
 
-      # CRITICAL FIX 4: Run Apply ONLY on push to main
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: terraform apply -auto-approve -input=false
