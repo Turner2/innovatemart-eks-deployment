@@ -128,8 +128,6 @@ module "eks" {
 }
 
 >>>>>>> cacc118033fc77e6c9df3de56e3c70c8cb541de3
-
-# Add this to the end of the eks module block
 eks_managed_node_groups = {
   main = {
     instance_types = ["t3.medium"]
