@@ -22,13 +22,18 @@ spec:
           protocol: TCP
         env:
         - name: DB_ENDPOINT
-          value: catalog-mysql:3306
+          value: "innovatemart-catalog-mysql.coh82w20k2zy.us-east-1.rds.amazonaws.com"
+        - name: DB_READ_ENDPOINT
+          value: "innovatemart-catalog-mysql.coh82w20k2zy.us-east-1.rds.amazonaws.com"
         - name: DB_NAME
-          value: catalog
+          value: "catalog"
         - name: DB_USER
-          value: catalog_user
+          value: "catalog_user"
         - name: DB_PASSWORD
-          value: default_password
+          valueFrom:
+            secretKeyRef:
+              name: rds-db-secrets
+              key: mysql-password
         resources:
           limits:
             memory: 512Mi
@@ -49,61 +54,3 @@ spec:
     protocol: TCP
   selector:
     app: catalog
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  name: catalog-mysql
-  namespace: retail-store
-spec:
-  serviceName: catalog-mysql
-  replicas: 1
-  selector:
-    matchLabels:
-      app: catalog-mysql
-  template:
-    metadata:
-      labels:
-        app: catalog-mysql
-    spec:
-      containers:
-      - name: mysql
-        image: mysql:8.0
-        env:
-        - name: MYSQL_ROOT_PASSWORD
-          value: my-secret-pw
-        - name: MYSQL_DATABASE
-          value: catalog
-        - name: MYSQL_USER
-          value: catalog_user
-        - name: MYSQL_PASSWORD
-          value: default_password
-        ports:
-        - containerPort: 3306
-          protocol: TCP
-        volumeMounts:
-        - name: data
-          mountPath: /var/lib/mysql
-  volumeClaimTemplates:
-  - metadata:
-      name: data
-    spec:
-      accessModes: ["ReadWriteOnce"]
-      resources:
-        requests:
-          storage: 5Gi
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: catalog-mysql
-  namespace: retail-store
-spec:
-  type: ClusterIP
-  clusterIP: None
-  ports:
-  - port: 3306
-    targetPort: 3306
-    protocol: TCP
-  selector:
-    app: catalog-mysql

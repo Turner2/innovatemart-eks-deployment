@@ -1,0 +1,52 @@
+# Terraform
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+**/.terraform/
+terraform.tfvars
+*.tfvars
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Kubernetes
+kubernetes/trust-policy.json
+kubernetes/ebs-csi-trust-policy.json
+*-secrets.yaml
+
+# Temporary files
+*~
+*.swp
+*.swo
+1~
+2~
+FETCH_HEAD
+
+# Sample/Test directories
+retail-store-sample-app/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.sublime-project
+*.sublime-workspace
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment
+.env
+.env.local
+.env.*.local

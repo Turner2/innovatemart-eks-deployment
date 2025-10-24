@@ -13,6 +13,7 @@ spec:
       labels:
         app: carts
     spec:
+      serviceAccountName: carts
       containers:
       - name: carts
         image: public.ecr.aws/aws-containers/retail-store-sample-cart:0.7.0
@@ -22,13 +23,9 @@ spec:
           protocol: TCP
         env:
         - name: CARTS_DYNAMODB_TABLENAME
-          value: carts
-        - name: CARTS_DYNAMODB_ENDPOINT
-          value: http://carts-dynamodb:8000
-        - name: AWS_ACCESS_KEY_ID
-          value: key
-        - name: AWS_SECRET_ACCESS_KEY
-          value: secret
+          value: "innovatemart-carts"
+        - name: AWS_REGION
+          value: "us-east-1"
         resources:
           limits:
             memory: 512Mi
@@ -50,44 +47,10 @@ spec:
   selector:
     app: carts
 ---
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: carts-dynamodb
-  namespace: retail-store
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: carts-dynamodb
-  template:
-    metadata:
-      labels:
-        app: carts-dynamodb
-    spec:
-      containers:
-      - name: dynamodb
-        image: amazon/dynamodb-local:2.0.0
-        ports:
-        - containerPort: 8000
-          protocol: TCP
-        resources:
-          limits:
-            memory: 512Mi
-          requests:
-            cpu: 128m
-            memory: 512Mi
----
 apiVersion: v1
-kind: Service
+kind: ServiceAccount
 metadata:
-  name: carts-dynamodb
+  name: carts
   namespace: retail-store
-spec:
-  type: ClusterIP
-  ports:
-  - port: 8000
-    targetPort: 8000
-    protocol: TCP
-  selector:
-    app: carts-dynamodb
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::378388077304:role/innovatemart-eks-cluster-carts-dynamodb-role
