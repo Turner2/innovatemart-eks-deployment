@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.6.0"
+  required_version = ">= 1.5.0"
   
   required_providers {
     aws = {
@@ -29,19 +29,17 @@ provider "aws" {
   }
 }
 
-# Data sources for EKS cluster authentication
-data "aws_eks_cluster" "cluster" {
-  name = module.eks.cluster_name
-}
-
-data "aws_eks_cluster_auth" "cluster" {
-  name = module.eks.cluster_name
-}
-
+# Provider configuration for Kubernetes
+# Note: Uses data sources from iam-alb-controller.tf to avoid duplication
 provider "kubernetes" {
-  host                   = data.aws_eks_cluster.cluster.endpoint
-  cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
-  token                  = data.aws_eks_cluster_auth.cluster.token
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+  
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "aws"
+    args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
+  }
 }
 
 # Get availability zones
@@ -51,5 +49,95 @@ data "aws_availability_zones" "available" {
 
 # Local variables
 locals {
-  cluster_
-
+  cluster_name = "innovatemart-eks-cluster"
+  azs          = slice(data.aws_availability_zones.available.names, 0, 2)
+}
+
+# VPC Module
+module "vpc" {
+  source  = "terraform-aws-modules/vpc/aws"
+  version = "~> 5.0"
+
+  name = "${local.cluster_name}-vpc"
+  cidr = var.vpc_cidr
+
+  azs             = local.azs
+  private_subnets = [for k, v in local.azs : cidrsubnet(var.vpc_cidr, 4, k)]
+  public_subnets  = [for k, v in local.azs : cidrsubnet(var.vpc_cidr, 8, k + 48)]
+
+  enable_nat_gateway   = true
+  single_nat_gateway   = true
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  public_subnet_tags = {
+    "kubernetes.io/role/elb" = "1"
+    "kubernetes.io/cluster/${local.cluster_name}" = "shared"
+  }
+
+  private_subnet_tags = {
+    "kubernetes.io/role/internal-elb" = "1"
+    "kubernetes.io/cluster/${local.cluster_name}" = "shared"
+  }
+
+  tags = {
+    Name = "${local.cluster_name}-vpc"
+  }
+}
+
+# EKS Module
+module "eks" {
+  source  = "terraform-aws-modules/eks/aws"
+  version = "~> 20.0"
+
+  cluster_name    = local.cluster_name
+  cluster_version = "1.28"
+
+  vpc_id     = module.vpc.vpc_id
+  subnet_ids = module.vpc.private_subnets
+
+  cluster_endpoint_public_access = true
+
+  # Enable IRSA (IAM Roles for Service Accounts)
+  enable_irsa = true
+
+  # EKS Managed Node Group
+  eks_managed_node_groups = {
+    main = {
+      min_size     = 2
+      max_size     = 3
+      desired_size = 2
+
+      instance_types = ["t3.medium"]
+      capacity_type  = "ON_DEMAND"
+
+      labels = {
+        role = "worker"
+      }
+
+      tags = {
+        Name = "${local.cluster_name}-node"
+      }
+    }
+  }
+
+  # Cluster access entry
+  enable_cluster_creator_admin_permissions = true
+
+  tags = {
+    Name = local.cluster_name
+  }
+}
+
+# RDS and DynamoDB Module
+module "rds" {
+  source = "./rds"
+
+  cluster_name            = local.cluster_name
+  vpc_id                  = module.vpc.vpc_id
+  private_subnet_ids      = module.vpc.private_subnets
+  eks_security_group_id   = module.eks.node_security_group_id
+  
+  orders_db_password      = var.orders_db_password
+  catalog_db_password     = var.catalog_db_password
+}
