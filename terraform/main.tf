@@ -139,3 +139,4 @@ output "configure_kubectl" {
   description = "Configure kubectl"
   value       = "aws eks update-kubeconfig --name ${module.eks.cluster_name} --region ${var.aws_region}"
 }
+
