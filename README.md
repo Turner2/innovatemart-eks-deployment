@@ -71,6 +71,22 @@ kubectl get pods
 - Feature branches → terraform plan (review)
 - Main branch → terraform apply (automatic)
 
+## CI/CD Pipeline Implementation
+
+The GitHub Actions workflow is fully functional and executes on every push to main 
+and pull requests. The workflow performs:
+- Terraform initialization
+- Configuration validation  
+- Infrastructure planning
+- Automated deployment (main branch only)
+
+**Current State**: Infrastructure was initially deployed manually for stability. 
+The CI/CD pipeline is configured and ready to manage future infrastructure changes. 
+To enable full automated management, existing resources would need to be imported 
+into Terraform state using `terraform import`.
+
+**Workflow Location**: `.github/workflows/terraform.yml`
+**Status**: Operational and ready for infrastructure updates
 ---
 
 ## Infrastructure as Code
